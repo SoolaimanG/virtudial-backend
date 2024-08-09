@@ -1,4 +1,6 @@
-export const europeCountries = [
+import { ICountryCallingCode } from "./../types";
+
+export const europeCountries: ICountryCallingCode[] = [
   {
     country: {
       name: "Germany",
@@ -38,7 +40,7 @@ export const europeCountries = [
         England: { callingCode: "+4420", phoneNumberLength: 10 },
         Scotland: { callingCode: "+44131", phoneNumberLength: 10 },
         Wales: { callingCode: "+4429", phoneNumberLength: 10 },
-        "Northern Ireland": { callingCode: "+4428", phoneNumberLength: 10 },
+        "Northern-Ireland": { callingCode: "+4428", phoneNumberLength: 10 },
       },
     },
   },
@@ -420,8 +422,9 @@ export const europeCountries = [
     },
   },
   {
+    //
     country: {
-      name: "Bosnia and Herzegovina",
+      name: "Bosnia-and-Herzegovina",
       price: "0.20",
       callingCode: "+387",
       phoneNumberLength: 8,

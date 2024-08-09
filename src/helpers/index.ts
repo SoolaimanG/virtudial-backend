@@ -1,3 +1,5 @@
+import { IPhoneNumbers, phoneNumberFeatures, stateProps } from "./../types";
+import { europeCountries } from "./../data/europeCountriesCallingCodes";
 import dotenv from "dotenv";
 import { authType, availableNumberTypes, customStatus, IUser } from "types";
 import { JoinWaitListModel, UserModel } from "../models/authentication";
@@ -145,8 +147,6 @@ export const findUserById = async (
   const user = await userInstance.exec();
 
   return user;
-
-  return user;
 };
 
 export const findUserByIdAndUpdate = async (
@@ -242,38 +242,218 @@ export const returnUser = (
   return _user;
 };
 
-export const generateRandomNumbers = (len: number, castToString = false) => {
-  let randomNumbers;
+export const generateRandomNumbers = (
+  len: number,
+  castToString: boolean = false,
+  withinSize: boolean = false
+): string | number => {
+  let randomNumbers: string | number;
 
-  for (let index = 0; index < len; index++) {
-    const rn = Math.floor(Math.random() * 9);
+  if (withinSize) {
+    randomNumbers = Math.floor(Math.random() * len);
+  } else {
+    randomNumbers = castToString ? "" : 0;
+    for (let index = 0; index < len; index++) {
+      const rn = Math.floor(Math.random() * 10); // Random number between 0 and 9
 
-    if (castToString) {
-      randomNumbers = +String(rn);
+      if (castToString) {
+        randomNumbers += String(rn);
+      } else {
+        randomNumbers = Number(randomNumbers) + rn;
+      }
     }
-
-    randomNumbers = +rn;
   }
 
   return randomNumbers;
 };
 
-export const createNumber = (
-  numberType: availableNumberTypes = "normal",
-  country: string
+export async function isStateInCountry(
+  _country: string,
+  _state: string,
+  type: availableNumberTypes = "normal"
+) {
+  // 1
+
+  const country =
+    type === "usa-special-numbers"
+      ? usaCallingCode.country
+      : europeCountries.find(
+          (c) => c.country.name.toLowerCase() === _country.toLowerCase()
+        ).country;
+
+  if (!country)
+    throw new Error(
+      "The country you selected is not found. please try using a different country."
+    );
+
+  // console.log({ country, _country });
+
+  const state = country.states?.[_state];
+
+  // console.log({ _state });
+  //
+  if (!state)
+    throw new Error(
+      "The state you selected is not available within the selected country"
+    );
+
+  return { country, state: { ...state, name: _state } };
+}
+
+export const createTagsForNumber = (
+  country: string,
+  price: string,
+  phoneNumber: string,
+  areaCode: string = "",
+  region: "europe",
+  features: phoneNumberFeatures[],
+  state: string = ""
 ) => {
-  let phoneNumber;
+  // Tags should consist of country, state, price, phoneNumber, areaCode, region, features
+  return [
+    country.toLowerCase(),
+    price,
+    phoneNumber,
+    areaCode,
+    region,
+    state,
+    ...features,
+  ].filter(Boolean);
+};
 
-  if (numberType === "usa-special-numbers") {
-    return;
+export const assignFeatureToNumber = () => {
+  //
+  const sms: phoneNumberFeatures = "sms";
+  const features: phoneNumberFeatures[] = ["voice-call", "voice-mail"];
+  let selectedFeatures: phoneNumberFeatures[] = [];
+
+  const rounds = Math.floor(Math.random() * features.length);
+  //
+
+  while (selectedFeatures.length < rounds) {
+    const randomFeature =
+      features[generateRandomNumbers(features.length, false, true) as number];
+    if (!selectedFeatures.includes(randomFeature)) {
+      selectedFeatures.push(randomFeature);
+    }
   }
 
-  if (numberType === "normal") {
-    const country = "";
-    return;
+  return [...selectedFeatures, sms];
+};
+
+export const discount = (applyCoupon: boolean = false) => {
+  return applyCoupon ? 20 / 100 : 1;
+};
+
+export const assignDescToPhoneNumber = (
+  features: phoneNumberFeatures[],
+  expirationTime: number,
+  popularity: number,
+  region: string
+): string => {
+  const featuresDescription = features.join(", ").toUpperCase();
+
+  const expirationDescription = `This number is active for ${expirationTime} month${
+    expirationTime > 1 ? "s" : ""
+  }.`;
+  const popularityDescription = `So far, ${popularity} people have bought this phone number.`;
+  const regionDescription = `The region for this number is ${region}.`;
+
+  return `This phone number has the following features: ${featuresDescription}. ${expirationDescription} ${popularityDescription} ${regionDescription}`;
+};
+
+//
+
+export const createNumber = async (
+  type: availableNumberTypes = "normal",
+  country: string,
+  state?: string,
+  isCustom: boolean = false,
+  _phoneNumber?: string,
+  _stock: number = 20,
+  _expirationMonth: number = 2
+) => {
+  let statesOfCountry: string[] = [];
+  let statesProps: Record<string, stateProps> = {};
+
+  const expirationDate = Date.now() + 60 * 60 * 24 * 7 * 4 * _expirationMonth;
+
+  const data: IPhoneNumbers = {
+    activationStatus: false,
+    areaCode: "",
+    countryCode: "",
+    description: "",
+    expirationDate: expirationDate,
+    features: assignFeatureToNumber(),
+    number: "",
+    popularity: isCustom ? 1 : 0,
+    price: 0,
+    region: "europe",
+    state: "",
+    stock: isCustom ? 1 : _stock,
+    tags: [],
+    country,
+    type,
+  };
+
+  if (type === "usa-special-numbers") {
+    const country = usaCallingCode.country;
+    statesOfCountry = Object.keys(country.states);
+    statesProps = country.states;
+  } else if (type === "normal") {
+    const idx = europeCountries.map((_) => _.country.name).indexOf(country);
+    const _country = europeCountries[idx].country;
+
+    statesOfCountry = Object.keys(_country.states);
+    statesProps = _country.states;
   }
+  //
+  const lengthOfStates = generateRandomNumbers(
+    statesOfCountry.length,
+    false,
+    true
+  ) as number;
+  const randomState = statesOfCountry[lengthOfStates];
 
-  // First Know the country we are creating it's number then know the len the number is suppose to be then, the callingCode, the state if applicable
+  const actualState = statesProps[state || randomState];
 
-  const number = generateRandomNumbers(7, true);
+  const _number = generateRandomNumbers(
+    actualState.phoneNumberLength - (actualState.callingCode.length - 1),
+    true
+  );
+  const phoneNumber = `${actualState.callingCode}${_phoneNumber || _number}`;
+
+  // Check if state is available make sure that the state is available within the country chosen
+  const { country: _country, state: _state } = await isStateInCountry(
+    country,
+    state || randomState,
+    type
+  );
+  //
+  const _price = isCustom
+    ? 5.0 * _expirationMonth
+    : (Number(_country.price || _state.price) + 1) * _expirationMonth;
+
+  data.number = phoneNumber;
+  data.state = state || randomState;
+  data.countryCode = _country.callingCode;
+  data.areaCode = actualState?.callingCode || _country?.callingCode;
+  data.state = _state.name;
+  data.price = _price;
+  data.description = assignDescToPhoneNumber(
+    data.features,
+    _expirationMonth,
+    data.popularity,
+    "europe"
+  );
+  data.tags = createTagsForNumber(
+    _country.name,
+    _price + "",
+    phoneNumber,
+    actualState?.callingCode || _country?.callingCode,
+    "europe",
+    data.features
+  );
+
+  return data;
 };

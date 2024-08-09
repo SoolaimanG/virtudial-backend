@@ -19,6 +19,8 @@ dotenv.config();
 const SECRET = process.env.JWT_SECRET || "";
 
 export const decodeToken = async (token: string) => {
+  if (!token) return null;
+
   const _decodedToken = verify(token, SECRET, {
     algorithms: ["HS256"],
   }) as ITokenPayload;
@@ -54,11 +56,15 @@ export const refreshSessionTokenForUser = async (
   res: express.Response
 ) => {
   try {
-    const { userId, userEmail, exp } = await decodeToken(token);
+    const dt = await decodeToken(token);
+
+    if (!dt) throw new Error("Missing token");
+
+    const { userEmail, userId, exp } = dt;
 
     const _v = await verifySessionIsStillActive(userId, exp, userEmail);
 
-    if (!_v) throw new Error("Invalid or expired token");
+    if (!_v.isSessionStillActive) throw new Error("Invalid or expired token");
 
     if (_v.shouldRefreshToken) {
       const newToken = generateTokenForUser({

@@ -97,3 +97,21 @@ export interface ICustomerReview {
   phoneNumberId: string;
 }
 //
+
+export interface stateProps {
+  callingCode: string;
+  phoneNumberLength: number;
+  price?: string;
+}
+
+export interface IEuropeCountriesProps {
+  name: string;
+  price: string;
+  callingCode: string;
+  phoneNumberLength: number;
+  states: Record<string, stateProps>;
+}
+
+export interface ICountryCallingCode {
+  country: IEuropeCountriesProps;
+}
